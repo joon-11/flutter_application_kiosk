@@ -40,6 +40,7 @@ dependencies:
   cloud_firestore: ^4.13.1
   sliding_up_panel: ^2.0.0+1
   intl: ^0.18.1
+  cart_stepper: ^4.1.2
 
 dev_dependencies:
   flutter_test:

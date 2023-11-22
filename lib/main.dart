@@ -1,3 +1,4 @@
+import 'package:cart_stepper/cart_stepper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:custom_radio_grouped_button/custom_radio_grouped_button.dart';
 import 'package:flutter/material.dart';
@@ -6,11 +7,12 @@ import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'firebase_option.dart';
 import 'package:intl/intl.dart';
 
-var f = NumberFormat.currency(locale: 'ko_KR', symbol: '');
+var f = NumberFormat.currency(locale: "ko_KR", symbol: "￦");
 
 var db = FirebaseFirestore.instance;
-String categoryCollectionName = 'cafe-category';
-String itemCollectionName = 'cafe-item';
+
+String categoryColletionName = "cafe-categroy";
+String itemCollectionName = "cafe-item";
 
 void main() async {
   await Firebase.initializeApp(
@@ -64,11 +66,13 @@ class _MainState extends State<Main> {
         var datas = snapshot.data!.docs;
 
         return CustomRadioButton(
-          defaultSelected: 'toAll',
-          elevation: 0,
-          buttonLables: ['전체보기', for (var data in datas) data['categoryName']],
-          buttonValues: ['toAll', for (var data in datas) data.id],
+          enableButtonWrap: true,
+          wrapAlignment: WrapAlignment.start,
+          defaultSelected: "allData",
+          buttonLables: ["전체보기", for (var data in datas) data['categoryName']],
+          buttonValues: ["allData", for (var data in datas) data.id],
           radioButtonValue: (p0) {
+            // print(p0);
             getItems(p0);
           },
           selectedColor: Colors.amber,
@@ -79,50 +83,126 @@ class _MainState extends State<Main> {
   }
 
   // 아이템 보기 기능
-  Future<void> getItems(String p0) async {
+
+  Future<void> getItems(var p0) async {
     setState(() {
       itemList = FutureBuilder(
-        future: p0 != 'toAll'
+        future: p0 != "allData"
             ? db
                 .collection(itemCollectionName)
-                .where('categoryId', isEqualTo: p0)
+                .where("categoryId", isEqualTo: p0)
                 .get()
             : db.collection(itemCollectionName).get(),
         builder: (context, snapshot) {
-          if (snapshot.hasData == true) {
+          if (snapshot.hasData) {
             var items = snapshot.data!.docs;
-            if (items.isEmpty) {
-              return const Center(child: Text('empty!'));
-            } else {
-              List<Widget> lt = [];
-              for (var item in items) {
-                lt.add(Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                      border: Border.all(width: 2, color: Colors.black),
-                      color: Colors.amber,
-                      borderRadius: BorderRadius.circular(10)),
-                  margin: const EdgeInsets.all(5),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(item['itemName']),
-                      Text(f.format(item['itemPrice']))
-                    ],
-                  ),
-                ));
-              }
 
-              return Wrap(
-                children: lt,
+            if (items.isEmpty) {
+              return const Center(child: Text("Empty"));
+            }
+
+            List<Widget> lt = [];
+            for (var item in items) {
+              lt.add(
+                GestureDetector(
+                  onTap: () {
+                    int price = item['itemPrice'];
+                    int cnt = 1;
+                    var optionData = {};
+                    var orderData = {};
+
+                    List<dynamic> options = item['options'];
+                    List<Widget> datas = [];
+                    for (var option in options) {
+                      var values = option['optionValue'].toString().split('\n');
+                      optionData[option['optionName']] = values[0];
+                      datas.add(
+                        ListTile(
+                          title: Text(option['optionName']),
+                          subtitle: CustomRadioButton(
+                            defaultSelected: values[0],
+                            enableButtonWrap: true,
+                            wrapAlignment: WrapAlignment.start,
+                            buttonLables: values,
+                            buttonValues: values,
+                            radioButtonValue: (p0) {
+                              optionData[option['optionName']] = p0;
+                              print(optionData);
+                            },
+                            unSelectedColor: Colors.white,
+                            selectedColor: Colors.teal,
+                          ),
+                        ),
+                      );
+                    }
+                    showDialog(
+                      context: context,
+                      builder: (context) => StatefulBuilder(
+                        builder: (context, st) {
+                          return AlertDialog(
+                            title: ListTile(
+                              title: Text(item['itemName']),
+                              subtitle: Text(f.format(price)),
+                              trailing: CartStepper(
+                                stepper: 1,
+                                value: cnt,
+                                didChangeCount: (value) {
+                                  if (value > 0) {
+                                    st(() {
+                                      cnt = value;
+                                      price = item['itemPrice'] * cnt;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            content: Column(
+                              children: datas,
+                            ),
+                            actions: [
+                              const Text("취소"),
+                              TextButton(
+                                onPressed: () {
+                                  orderData['orderName'] = item['itemName'];
+                                  orderData['orderQty'] = cnt;
+                                  orderData['options'] = optionData;
+
+                                  print(orderData);
+                                },
+                                child: const Text('담기'),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    margin: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      border: Border.all(width: 1, color: Colors.blue),
+                      color: const Color.fromARGB(255, 255, 255, 255),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Text(item['itemName']),
+                        Text(f.format(item['itemPrice'])),
+                      ],
+                    ),
+                  ),
+                ),
               );
             }
-          } else {
-            return const Center(
-              child: CircularProgressIndicator(),
+            return Wrap(
+              children: lt,
             );
           }
+
+          return const Center(child: CircularProgressIndicator());
         },
       );
     });
@@ -133,7 +213,7 @@ class _MainState extends State<Main> {
     // TODO: implement initState
     super.initState();
     showCategoryList();
-    getItems('toAll');
+    getItems("allData");
   }
 
   @override
@@ -175,7 +255,6 @@ class _MainState extends State<Main> {
             // 카테고리 목록
             categoryList,
             Expanded(child: itemList)
-
             // 아이템 목록
           ],
         ),
