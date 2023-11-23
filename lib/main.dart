@@ -55,6 +55,38 @@ class _MainState extends State<Main> {
   // 패널 (장바구니) 컨트롤러
   PanelController panelController = PanelController();
   // 카테고리 기능 보기
+  var orderList = [];
+  dynamic orderListView = const Center(child: Text("아무것도 없음."));
+
+  //장바구니 목록 보기
+  void showOrderList() {
+    setState(() {
+      orderListView = ListView.separated(
+        itemBuilder: (cotext, index) {
+          var order = orderList[index];
+
+          return ListTile(
+            leading: IconButton(
+              onPressed: () {
+                orderList.removeAt(index);
+                showOrderList();
+              },
+              icon: const Icon(Icons.close),
+            ),
+            title: Text("${order['orderItem']} X ${order['orderQty']}"),
+            subtitle: Text(order['optionData']
+                .toString()
+                .replaceAll("{", "(")
+                .replaceAll('}', ')')),
+            trailing: Text(f.format(order['orderPrice'] * order['orderQty'])),
+          );
+        },
+        separatorBuilder: (context, index) => const Divider(),
+        itemCount: orderList.length,
+      );
+    });
+  }
+
   Future<void> showCategoryList() async {
     categoryList = FutureBuilder(
       future: db.collection("cafe-category").get(),
@@ -111,30 +143,35 @@ class _MainState extends State<Main> {
                     var optionData = {};
                     var orderData = {};
 
-                    List<dynamic> options = item['options'];
-                    List<Widget> datas = [];
+                    var options = item['options'];
+                    List<Widget> data = [];
+
                     for (var option in options) {
-                      var values = option['optionValue'].toString().split('\n');
-                      optionData[option['optionName']] = values[0];
-                      datas.add(
+                      var optionValue =
+                          option['optionValue'].toString().split("\n");
+
+                      optionData[option['optionName']] = optionValue[0];
+
+                      data.add(
                         ListTile(
                           title: Text(option['optionName']),
                           subtitle: CustomRadioButton(
-                            defaultSelected: values[0],
                             enableButtonWrap: true,
                             wrapAlignment: WrapAlignment.start,
-                            buttonLables: values,
-                            buttonValues: values,
+                            buttonLables: optionValue,
+                            buttonValues: optionValue,
+                            defaultSelected: optionValue[0],
                             radioButtonValue: (p0) {
                               optionData[option['optionName']] = p0;
                               print(optionData);
                             },
+                            selectedColor: Colors.amber,
                             unSelectedColor: Colors.white,
-                            selectedColor: Colors.teal,
                           ),
                         ),
                       );
                     }
+
                     showDialog(
                       context: context,
                       builder: (context) => StatefulBuilder(
@@ -157,19 +194,26 @@ class _MainState extends State<Main> {
                               ),
                             ),
                             content: Column(
-                              children: datas,
+                              children: data,
                             ),
                             actions: [
-                              const Text("취소"),
                               TextButton(
                                 onPressed: () {
-                                  orderData['orderName'] = item['itemName'];
-                                  orderData['orderQty'] = cnt;
-                                  orderData['options'] = optionData;
-
-                                  print(orderData);
+                                  Navigator.pop(context);
                                 },
-                                child: const Text('담기'),
+                                child: const Text("취소"),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  orderData['orderItem'] = item['itemName'];
+                                  orderData['orderQty'] = cnt;
+                                  orderData['optionData'] = optionData;
+                                  orderData['orderPrice'] = item['itemPrice'];
+                                  orderList.add(orderData);
+                                  showOrderList();
+                                  Navigator.pop(context);
+                                },
+                                child: const Text("담기"),
                               ),
                             ],
                           );
@@ -228,7 +272,7 @@ class _MainState extends State<Main> {
           Transform.translate(
             offset: const Offset(-10, 8),
             child: Badge(
-              label: const Text("1"),
+              label: Text(orderList.length.toString()),
               child: IconButton(
                 onPressed: () {
                   if (panelController.isPanelOpen) {
@@ -245,10 +289,32 @@ class _MainState extends State<Main> {
       ),
       body: SlidingUpPanel(
         controller: panelController,
-        minHeight: 50,
+        minHeight: 100,
         maxHeight: 600,
         panel: Container(
-          color: Colors.amber,
+          color: Colors.white30,
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(10))),
+                height: 50,
+                child: const Center(
+                    child: Text(
+                  "장바구니",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                )),
+              ),
+              Expanded(
+                child: orderListView,
+              )
+            ],
+          ),
         ),
         body: Column(
           children: [
