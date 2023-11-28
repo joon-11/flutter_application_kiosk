@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:custom_radio_grouped_button/custom_radio_grouped_button.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_application_kiosk/order_result.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'firebase_option.dart';
 import 'package:intl/intl.dart';
@@ -312,7 +313,49 @@ class _MainState extends State<Main> {
               ),
               Expanded(
                 child: orderListView,
-              )
+              ),
+              ElevatedButton(
+                  onPressed: orderList.isEmpty
+                      ? null
+                      : () async {
+                          var controller = TextEditingController();
+                          var result = await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('결제하기'),
+                              content: TextFormField(
+                                controller: controller,
+                              ),
+                              actions: [
+                                TextButton(
+                                    onPressed: () {
+                                      var orderResult = {
+                                        'orders': orderList,
+                                        'orderName': controller.text,
+                                      };
+                                      Navigator.pop(context, orderResult);
+                                    },
+                                    child: const Text("결제")),
+                                TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context, null);
+                                    },
+                                    child: const Text("취소"))
+                              ],
+                            ),
+                          );
+                          print(result);
+                          if (result != null) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => OrderResult(
+                                    orderResult: result,
+                                  ),
+                                ));
+                          }
+                        },
+                  child: const Text("결제"))
             ],
           ),
         ),
