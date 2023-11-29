@@ -253,6 +253,13 @@ class _MainState extends State<Main> {
     });
   }
 
+  void clearOrder() {
+    setState(() {
+      orderList.clear();
+      showOrderList();
+    });
+  }
+
   @override
   void initState() {
     // TODO: implement initState
@@ -345,14 +352,18 @@ class _MainState extends State<Main> {
                             ),
                           );
                           print(result);
+
                           if (result != null) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => OrderResult(
-                                    orderResult: result,
-                                  ),
-                                ));
+                            var t = result;
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => OrderResult(
+                                  orderResult: t,
+                                ),
+                              ),
+                            );
+                            clearOrder();
                           }
                         },
                   child: const Text("결제"))
